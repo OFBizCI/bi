@@ -18,95 +18,125 @@ specific language governing permissions and limitations
 under the License.
 -->
 
-<simple-methods xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
-        xsi:noNamespaceSchemaLocation="http://ofbiz.apache.org/dtds/simple-methods.xsd">
+<simple-methods xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="http://ofbiz.apache.org/dtds/simple-methods-v2.xsd">
 
-    <simple-method method-name="loadCurrencyDimension" short-description="">
-        <entity-and entity-name="Uom" list-name="currencies">
+    <simple-method method-name="quickInitDataWarehouse" short-description="">
+        <set-service-fields service-name="loadDateDimension" map="parameters" to-map="inMap"/>
+        <call-service service-name="loadDateDimension" in-map-name="inMap"/>
+        <check-errors/>
+
+        <clear-field field="inMap"/>
+        <call-service service-name="loadCurrencyDimension" in-map-name="inMap"/>
+        <check-errors/>
+
+        <!-- loads all products in the ProductDimension -->
+        <clear-field field="inMap"/>
+        <call-service service-name="loadAllProductsInProductDimension" in-map-name="inMap"/>
+        <check-errors/>
+
+        <!-- loads the invoice items in the SalesInvoiceItemFact fact entity -->
+        <entity-condition entity-name="Invoice" list="invoices">
+            <condition-list>
+                <condition-expr field-name="invoiceTypeId" value="SALES_INVOICE"/>
+                <condition-expr field-name="invoiceDate" operator="greater-equals" from-field="parameters.fromDate"/>
+                <condition-expr field-name="invoiceDate" operator="less-equals" from-field="parameters.thruDate"/>
+            </condition-list>
+        </entity-condition>
+        <iterate list="invoices" entry="invoice">
+            <clear-field field="inMap"/>
+            <set field="inMap.invoiceId" from-field="invoice.invoiceId"/>
+            <call-service service-name="loadSalesInvoiceFact" in-map-name="inMap"/>
+            <check-errors/>
+        </iterate>
+        
+        <!-- loads the order items in the SalesOrderItemFact fact entity -->
+        <entity-condition entity-name="OrderHeader" list="orderHeaders">
+            <condition-list>
+                <condition-expr field-name="orderTypeId" value="SALES_ORDER"/>
+                <condition-expr field-name="orderDate" operator="greater-equals" from-field="parameters.fromDate"/>
+                <condition-expr field-name="orderDate" operator="less-equals" from-field="parameters.thruDate"/>
+            </condition-list>
+        </entity-condition>
+        <iterate list="orderHeaders" entry="orderHeader">
+            <clear-field field="inMap"/>
+            <set field="inMap.orderId" from-field="orderHeader.orderId"/>
+            <call-service service-name="loadSalesOrderFact" in-map-name="inMap"></call-service>
+            <check-errors/>
+        </iterate>
+        
+        <!-- loads the inventory items in the InventoryItemFact fact entity -->
+        <entity-condition entity-name="InventoryItem" list="inventoryItems">
+            <condition-expr field-name="inventoryItemTypeId" operator="equals" value="NON_SERIAL_INV_ITEM"/>
+        </entity-condition>
+        <iterate list="inventoryItems" entry="inventoryItem">
+            <clear-field field="inventMap"/>
+            <set field="inventMap.inventoryItemId" from-field="inventoryItem.inventoryItemId"/>
+            <call-service service-name="loadInventoryFact" in-map-name="inventMap"></call-service>
+            <check-errors/>
+        </iterate>
+    </simple-method>
+
+    <simple-method method-name="loadCurrencyDimension" short-description="Initialize the CurrencyDimension using the update strategy of 'type 1'">
+        <entity-and entity-name="Uom" list="currencies">
             <field-map field-name="uomTypeId" value="CURRENCY_MEASURE"/>
         </entity-and>
-        <iterate list-name="currencies" entry-name="currency">
-            <entity-and entity-name="CurrencyDimension" list-name="currencyDims">
-                <field-map field-name="currencyId" env-name="currency.uomId"/>
+        <iterate list="currencies" entry="currency">
+            <entity-and entity-name="CurrencyDimension" list="currencyDims">
+                <field-map field-name="currencyId" from-field="currency.uomId"/>
             </entity-and>
             <if-not-empty field="currencyDims">
-                <iterate list-name="currencyDims" entry-name="currencyDim">
+                <iterate list="currencyDims" entry="currencyDim">
                     <set field="currencyDim.description" from-field="currency.description"/>
-                    <store-value value-name="currencyDim"/>
+                    <store-value value-field="currencyDim"/>
                 </iterate>
             <else>
-                <make-value value-name="currencyDim" entity-name="CurrencyDimension"/>
-                <sequenced-id-to-env sequence-name="CurrencyDimension" env-name="currencyDim.dimensionId"/>
+                <make-value value-field="currencyDim" entity-name="CurrencyDimension"/>
+                <sequenced-id sequence-name="CurrencyDimension" field="currencyDim.dimensionId"/>
                 <set field="currencyDim.currencyId" from-field="currency.uomId"/>
                 <set field="currencyDim.description" from-field="currency.description"/>
-                <create-value value-name="currencyDim"/>
+                <create-value value-field="currencyDim"/>
             </else>
             </if-not-empty>
         </iterate>
     </simple-method>
 
     <simple-method method-name="prepareProductDimensionData" short-description="">
-        <entity-one entity-name="Product" value-name="product"/>
+        <entity-one entity-name="Product" value-field="product"/>
         <if-empty field="product">
-            <add-error><fail-message message="Product with id [${productId}] doesn't exist."/></add-error>
+            <add-error>
+                <fail-property resource="ProductUiLabels" property="ProductProductNotFoundWithProduct"/>
+            </add-error>
         </if-empty>
         <check-errors/>
-        <make-value value-name="productDimension" entity-name="ProductDimension"/>
-        <set-nonpk-fields map-name="product" value-name="productDimension"/>
+        <make-value value-field="productDimension" entity-name="ProductDimension"/>
+        <set-nonpk-fields map="product" value-field="productDimension"/>
 
-        <get-related-one value-name="product" relation-name="ProductType" to-value-name="productType"/>
+        <get-related-one value-field="product" relation-name="ProductType" to-value-field="productType"/>
         <set field="productDimension.productType" from-field="productType.description"/>
 
-        <field-to-result field-name="productDimension"/>
+        <field-to-result field="productDimension"/>
     </simple-method>
 
     <simple-method method-name="loadProductInProductDimension" short-description="">
-        <set-service-fields service-name="prepareProductDimensionData" map-name="parameters" to-map-name="inMap"/>
+        <set-service-fields service-name="prepareProductDimensionData" map="parameters" to-map="inMap"/>
         <call-service service-name="prepareProductDimensionData" in-map-name="inMap">
             <result-to-field result-name="productDimension"/>
         </call-service>
-        <clear-field field-name="inMap"/>
-        <set-service-fields service-name="storeGenericDimension" map-name="parameters" to-map-name="inMap"/>
+        <clear-field field="inMap"/>
+        <set-service-fields service-name="storeGenericDimension" map="parameters" to-map="inMap"/>
         <set field="inMap.naturalKeyFields[]" value="productId"/>
         <set field="inMap.dimensionValue" from-field="productDimension"/>
         <call-service service-name="storeGenericDimension" in-map-name="inMap"/>
     </simple-method>
     <simple-method method-name="loadAllProductsInProductDimension" short-description="">
-        <entity-condition entity-name="Product" list-name="products"/>
-        <iterate list-name="products" entry-name="product">
-            <set-service-fields service-name="loadProductInProductDimension" map-name="parameters" to-map-name="inMap"/>
+        <entity-condition entity-name="Product" list="products"/>
+        <iterate list="products" entry="product">
+            <set-service-fields service-name="loadProductInProductDimension" map="parameters" to-map="inMap"/>
             <set field="inMap.productId" from-field="product.productId"/>
             <call-service service-name="loadProductInProductDimension" in-map-name="inMap"/>
-            <clear-field field-name="inMap"/>
+            <clear-field field="inMap"/>
         </iterate>
     </simple-method>
-    <simple-method method-name="quickInitDataWarehouse" short-description="">
-        <set-service-fields service-name="loadDateDimension" map-name="parameters" to-map-name="inMap"/>
-        <call-service service-name="loadDateDimension" in-map-name="inMap"/>
-        <check-errors/>
 
-        <clear-field field-name="inMap"/>
-        <call-service service-name="loadCurrencyDimension" in-map-name="inMap"/>
-        <check-errors/>
-
-        <!-- loads all products in the ProductDimension -->
-        <clear-field field-name="inMap"/>
-        <call-service service-name="loadAllProductsInProductDimension" in-map-name="inMap"/>
-        <check-errors/>
-        
-        <!-- loads the invoice items in the SalesInvoiceItemFact fact entity -->
-        <entity-condition entity-name="Invoice" list-name="invoices">
-            <condition-list>
-                <condition-expr field-name="invoiceTypeId" value="SALES_INVOICE"/>
-                <condition-expr field-name="invoiceDate" operator="greater-equals" env-name="parameters.fromDate"/>
-                <condition-expr field-name="invoiceDate" operator="less-equals" env-name="parameters.thruDate"/>
-            </condition-list>
-        </entity-condition>
-        <iterate list-name="invoices" entry-name="invoice">
-            <clear-field field-name="inMap"/>
-            <set field="inMap.invoiceId" from-field="invoice.invoiceId"/>
-            <call-service service-name="loadSalesInvoiceFact" in-map-name="inMap"/>
-            <check-errors/>
-        </iterate>
-    </simple-method>
 </simple-methods>

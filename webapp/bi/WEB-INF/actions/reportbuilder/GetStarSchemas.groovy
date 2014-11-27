@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -17,41 +17,36 @@
  * under the License.
  */
 
-import java.util.*;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.TreeSet;
 
-import org.ofbiz.base.util.*;
-import org.ofbiz.entity.*;
-import org.ofbiz.entity.condition.*;
-import org.ofbiz.entity.util.*;
+import org.ofbiz.entity.Delegator;
 import org.ofbiz.entity.model.ModelReader;
 import org.ofbiz.entity.model.ModelEntity;
-import org.ofbiz.entity.model.ModelField;
 import org.ofbiz.entity.model.ModelViewEntity;
-import org.ofbiz.entity.model.ModelViewEntity.ModelAlias;
 
 import javolution.util.FastList;
 import javolution.util.FastMap;
 
-String starSchemaName = parameters.get("starSchemaName");
-String[] selectedFields = request.getParameterValues("selectedField");
-context.put("columnNames", selectedFields);
+reader = delegator.getModelReader();
+ec = reader.getEntityNames();
+entities = new TreeSet(ec);
+entitiesIt = entities.iterator();
 
-List conditionList = null;
-EntityConditionList condition =  null;
-selectFields = UtilMisc.toSetArray(selectedFields);
-List orderByFields = null;
-EntityFindOptions findOptions = null;
+List starSchemas = FastList.newInstance();
 
-List records = FastList.newInstance();
+while (entitiesIt.hasNext()) {
+    entity = reader.getModelEntity(entitiesIt.next());
+    packageName = entity.getPackageName();
+    if (!packageName.contains("starschema")) {
+        continue;
+    }
 
-//conditionList.add(...);
-//condition =  EntityCondition.makeCondition(conditionList, EntityOperator.AND);
+    entityMap = FastMap.newInstance();
+    entityMap.name = entity.getEntityName();
+    entityMap.title = entity.getTitle();
 
-orderByFields = null;
-
-findOptions = new EntityFindOptions(); 
-findOptions.setDistinct(false);
-
-records = delegator.findList(starSchemaName, condition, selectFields, orderByFields, findOptions, false);
-
-context.put("records", records);
+    starSchemas.add(entityMap);
+}
+context.starSchemas = starSchemas;

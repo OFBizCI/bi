@@ -17,12 +17,14 @@ KIND, either express or implied.  See the License for the
 specific language governing permissions and limitations
 under the License.
 -->
-<entity-engine-xml>
 
+<entity-engine-xml>
     <CurrencyDimension dimensionId="_NF_" description="Currency Not Found."/>
     <CurrencyDimension dimensionId="_NA_" description="Currency Not Set."/>
 
     <DateDimension dimensionId="_NF_" description="Date Not Found."/>
     <DateDimension dimensionId="_NA_" description="Date Not Set."/>
 
+    <ProductDimension dimensionId="_NF_"/>
+    <ProductDimension dimensionId="_NA_"/>
 </entity-engine-xml>

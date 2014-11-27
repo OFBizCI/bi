@@ -18,8 +18,8 @@ specific language governing permissions and limitations
 under the License.
 -->
 <entity-engine-xml>
+    <SecurityPermission description="ALL Business Intelligence operations." permissionId="BI_ADMIN"/>
+    <SecurityPermission description="Business Intelligence View permission." permissionId="BI_VIEW"/>
 
-    <ProductDimension dimensionId="_NF_"/>
-    <ProductDimension dimensionId="_NA_"/>
-
+    <SecurityGroupPermission groupId="SUPER" permissionId="BI_ADMIN"/>
 </entity-engine-xml>

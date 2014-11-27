@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -22,7 +22,7 @@ import java.util.Iterator;
 import java.util.TreeSet;
 
 import org.ofbiz.base.util.UtilValidate;
-import org.ofbiz.entity.GenericDelegator;
+import org.ofbiz.entity.Delegator;
 import org.ofbiz.entity.model.ModelReader;
 import org.ofbiz.entity.model.ModelEntity;
 import org.ofbiz.entity.model.ModelField;
@@ -32,30 +32,30 @@ import org.ofbiz.entity.model.ModelViewEntity.ModelAlias;
 import javolution.util.FastList;
 import javolution.util.FastMap;
 
-String starSchemaName = parameters.get("starSchemaName");
+starSchemaName = parameters.starSchemaName;
 
-List starSchemaFields = FastList.newInstance();
-if (UtilValidate.isNotEmpty(starSchemaName)) {
-    ModelReader reader = delegator.getModelReader();
-    ModelEntity starSchema = reader.getModelEntity(starSchemaName);
-    if (UtilValidate.isNotEmpty(starSchema)) {
-        Iterator fieldsIt = starSchema.getAliasesIterator();
-        while (fieldsIt != null && fieldsIt.hasNext()) {
-            ModelAlias field = (ModelAlias)fieldsIt.next();
-            Map fieldMap = FastMap.newInstance();
-            fieldMap.put("name", field.getName());
-            String description = field.getDescription();
-            if (UtilValidate.isEmpty(description)) {
-                ModelEntity aliasedEntity = starSchema.getAliasedEntity(field.getEntityAlias(), reader);
-                if (aliasedEntity != null) {
-                    ModelField aliasedField = starSchema.getAliasedField(aliasedEntity, field.getField(), reader);
+starSchemaFields = FastList.newInstance();
+if (starSchemaName) {
+    reader = delegator.getModelReader();
+    starSchema = reader.getModelEntity(starSchemaName);
+    if (starSchema) {
+        fieldsIt = starSchema.getAliasesIterator();
+        while (fieldsIt.hasNext()) {
+            field = fieldsIt.next();
+            fieldMap = FastMap.newInstance();
+            fieldMap.name = field.getName();
+            description = field.getDescription();
+            if (!description) {
+                aliasedEntity = starSchema.getAliasedEntity(field.getEntityAlias(), reader);
+                if (aliasedEntity) {
+                    aliasedField = starSchema.getAliasedField(aliasedEntity, field.getField(), reader);
                     description = aliasedField.getDescription();
                 }
             }
-            fieldMap.put("description", description);
+            fieldMap.description = description;
             starSchemaFields.add(fieldMap);
         }
     }
 }
-context.put("starSchemaName", starSchemaName);
-context.put("starSchemaFields", starSchemaFields);
+context.starSchemaName = starSchemaName;
+context.starSchemaFields = starSchemaFields;
